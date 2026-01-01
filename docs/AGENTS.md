@@ -219,7 +219,10 @@ Example of accordion groups:
 <AccordionGroup>
 <Accordion title="Troubleshooting connection issues">
   - **Firewall blocking**: Ensure ports 80 and 443 are open
-  - **Proxy configuration**: Set HTTP_PROXY environment variable
+  - **Proxy configuration**: Set HTTP_PROXY or HTTPS_PROXY environment variable
+    - Windows PowerShell: `$env:HTTPS_PROXY="http://proxy.example.com:8080"`
+    - Linux/macOS: `export HTTPS_PROXY="http://proxy.example.com:8080"`
+    - With authentication: `export HTTPS_PROXY="http://username:password@proxy.example.com:8080"`
   - **DNS resolution**: Try using 8.8.8.8 as DNS server
 </Accordion>
 
