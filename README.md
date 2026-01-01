@@ -109,6 +109,9 @@ The following environment variables can be configured at build time or runtime:
 | `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |
 | `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
+| `HTTP_PROXY` | Runtime | Not set | HTTP proxy URL for outgoing requests (e.g., `http://proxy.example.com:8080`) |
+| `HTTPS_PROXY` | Runtime | Not set | HTTPS proxy URL for outgoing requests (e.g., `http://proxy.example.com:8080`) |
+| `ALL_PROXY` | Runtime | Not set | Proxy URL for all HTTP/HTTPS requests |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 
@@ -128,3 +131,33 @@ When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or clo
 When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
 
 See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
+
+### Troubleshooting
+
+#### Connection Issues
+
+If you experience connection timeouts or network issues:
+
+1. **Proxy Configuration**: If you're behind a corporate firewall or proxy, set the appropriate environment variables:
+   ```bash
+   # Linux/macOS
+   export HTTPS_PROXY="http://proxy.example.com:8080"
+   export HTTP_PROXY="http://proxy.example.com:8080"
+
+   # Windows PowerShell
+   $env:HTTPS_PROXY="http://proxy.example.com:8080"
+   $env:HTTP_PROXY="http://proxy.example.com:8080"
+
+   # With authentication
+   export HTTPS_PROXY="http://username:password@proxy.example.com:8080"
+   ```
+
+2. **Increase Timeout**: If you're experiencing timeout errors with the iflow agent, you can increase the timeout duration in the agent configuration:
+   - Go to Settings → Agent Settings
+   - Select the iflow agent
+   - Add `"timeout": 30` (or higher value in seconds) to the configuration
+   - Default is typically 10 seconds, but you can increase it to 30-60 seconds for slower networks
+
+3. **DNS Resolution**: Try using alternative DNS servers like 8.8.8.8 or 1.1.1.1
+
+4. **Firewall**: Ensure ports 80 and 443 are open for outgoing connections
