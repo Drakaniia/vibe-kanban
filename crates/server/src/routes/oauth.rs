@@ -75,7 +75,13 @@ async fn handoff_init(
         app_challenge,
     };
 
-    let response = client.handoff_init(&request).await?;
+    let response = match client.handoff_init(&request).await {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::error!(?e, "handoff_init failed");
+            return Err(e.into());
+        }
+    };
 
     deployment
         .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier)
