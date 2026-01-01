@@ -26,6 +26,8 @@ pub struct IFlow {
     pub yolo: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
     #[serde(skip)]
@@ -49,6 +51,10 @@ impl IFlow {
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model.as_str()]);
+        }
+
+        if let Some(timeout) = self.timeout {
+            builder = builder.extend_params(["--timeout", &timeout.to_string()]);
         }
 
         builder = builder.extend_params(["--experimental-acp"]);
