@@ -5,7 +5,7 @@ use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{msg_store::MsgStore, shell::resolve_executable_path};
 
 use crate::{
     approvals::ExecutorApprovalService,
@@ -35,8 +35,13 @@ pub struct IFlow {
 }
 
 impl IFlow {
-    fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @qwen-code/iflow@latest");
+    async fn build_command_builder(&self) -> CommandBuilder {
+        let base_cmd = if resolve_executable_path("iflow").await.is_some() {
+            "iflow"
+        } else {
+            "npm i -g @iflow-ai/iflow-cli"
+        };
+        let mut builder = CommandBuilder::new(base_cmd);
 
         if self.yolo.unwrap_or(false) {
             builder = builder.extend_params(["--yolo"]);
@@ -66,7 +71,7 @@ impl StandardCodingAgentExecutor for IFlow {
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let iflow_command = self.build_command_builder().build_initial()?;
+        let iflow_command = self.build_command_builder().await.build_initial()?;
         let approvals = if self.yolo.unwrap_or(false) {
             None
         } else {
@@ -93,7 +98,7 @@ impl StandardCodingAgentExecutor for IFlow {
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let iflow_command = self.build_command_builder().build_follow_up(&[])?;
+        let iflow_command = self.build_command_builder().await.build_follow_up(&[])?;
         let approvals = if self.yolo.unwrap_or(false) {
             None
         } else {
@@ -108,6 +113,7 @@ impl StandardCodingAgentExecutor for IFlow {
                 env,
                 &self.cmd,
                 approvals,
+                
             )
             .await
     }
