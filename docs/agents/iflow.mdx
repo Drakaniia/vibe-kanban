@@ -1,0 +1,27 @@
+---
+title: "iFlow CLI"
+description: "Set up iFlow CLI coding agent"
+icon: https://www.vibekanban.com/images/logos/iflow.svg
+---
+
+<Steps>
+<Step title="Run iFlow CLI">
+  ```bash
+  bash -c "$(curl -fsSL https://cloud.iflow.cn/iflow-cli/install.sh)"
+  ```
+</Step>
+
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. For more details, see the [iFlow CLI documentation](https://github.com/Drakaniia/vibe-kanban).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select iFlow CLI when creating task attempts.
+</Step>
+</Steps>
