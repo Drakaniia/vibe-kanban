@@ -232,18 +232,21 @@
     "I_FLOW": {
       "DEFAULT": {
         "I_FLOW": {
-          "yolo": true
+          "yolo": true,
+          "timeout": 30
         }
       },
       "APPROVALS": {
         "I_FLOW": {
-          "yolo": false
+          "yolo": false,
+          "timeout": 30
         }
       },
       "MODEL_VARIANT": {
         "I_FLOW": {
           "model": "iflow-model-name",
-          "yolo": true
+          "yolo": true,
+          "timeout": 30
         }
       }
     }
