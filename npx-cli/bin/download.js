@@ -1,7 +1,9 @@
 const https = require("https");
+const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const url = require("url");
 
 // Replaced during npm pack by workflow
 const R2_BASE_URL = "__R2_PUBLIC_URL__";
@@ -13,9 +15,46 @@ const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 const LOCAL_DIST_DIR = path.join(__dirname, "..", "dist");
 const LOCAL_DEV_MODE = fs.existsSync(LOCAL_DIST_DIR) || process.env.VIBE_KANBAN_LOCAL === "1";
 
+// Get proxy configuration from environment variables
+function getProxyConfig(targetUrl) {
+  const targetProtocol = url.parse(targetUrl).protocol;
+  const envVar = targetProtocol === "https:" ? "HTTPS_PROXY" : "HTTP_PROXY";
+  const proxyUrl = process.env[envVar] || process.env[envVar.toLowerCase()] || process.env["ALL_PROXY"] || process.env["all_proxy"];
+
+  if (!proxyUrl) return null;
+
+  const parsed = url.parse(proxyUrl);
+  return {
+    host: parsed.hostname,
+    port: parsed.port || (parsed.protocol === "https:" ? 443 : 80),
+    protocol: parsed.protocol || "http:",
+    auth: parsed.auth
+  };
+}
+
+// Create HTTPS agent with proxy support
+function getHttpsAgent(targetUrl) {
+  const proxyConfig = getProxyConfig(targetUrl);
+  if (!proxyConfig) return null;
+
+  const HttpsProxyAgent = require("https-proxy-agent");
+  return new HttpsProxyAgent(proxyConfig);
+}
+
+// Enhanced https.get with proxy support
+function httpsGetWithProxy(targetUrl, options, callback) {
+  const agent = getHttpsAgent(targetUrl);
+  const requestOptions = {
+    ...options,
+    agent: agent || undefined
+  };
+
+  return https.get(targetUrl, requestOptions, callback);
+}
+
 async function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    httpsGetWithProxy(url, {}, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         return fetchJson(res.headers.location).then(resolve).catch(reject);
       }
@@ -47,7 +86,7 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
       } catch {}
     };
 
-    https.get(url, (res) => {
+    httpsGetWithProxy(url, {}, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         file.close();
         cleanup();
