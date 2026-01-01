@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
+import { wsConnectionManager } from './websocketConnectionManager';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsFinishedMsg = { finished: boolean };
@@ -35,12 +36,12 @@ export const useJsonPatchWsStream = <T extends object>(
   const [data, setData] = useState<T | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const dataRef = useRef<T | undefined>(undefined);
   const retryTimerRef = useRef<number | null>(null);
   const retryAttemptsRef = useRef<number>(0);
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
+  const disconnectRef = useRef<(() => void) | null>(null);
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
@@ -58,10 +59,10 @@ export const useJsonPatchWsStream = <T extends object>(
 
   useEffect(() => {
     if (!enabled || !endpoint) {
-      // Close connection and reset state
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
+      // Disconnect and reset state
+      if (disconnectRef.current) {
+        disconnectRef.current();
+        disconnectRef.current = null;
       }
       if (retryTimerRef.current) {
         window.clearTimeout(retryTimerRef.current);
@@ -86,16 +87,15 @@ export const useJsonPatchWsStream = <T extends object>(
       }
     }
 
-    // Create WebSocket if it doesn't exist
-    if (!wsRef.current) {
-      // Reset finished flag for new connection
-      finishedRef.current = false;
+    // Reset finished flag for new connection
+    finishedRef.current = false;
 
-      // Convert HTTP endpoint to WebSocket endpoint
-      const wsEndpoint = endpoint.replace(/^http/, 'ws');
-      const ws = new WebSocket(wsEndpoint);
+    // Convert HTTP endpoint to WebSocket endpoint
+    const wsEndpoint = endpoint.replace(/^http/, 'ws');
 
-      ws.onopen = () => {
+    // Use connection manager to get shared connection
+    disconnectRef.current = wsConnectionManager.connect(wsEndpoint, {
+      onOpen: () => {
         setError(null);
         setIsConnected(true);
         // Reset backoff on successful connection
@@ -104,9 +104,8 @@ export const useJsonPatchWsStream = <T extends object>(
           window.clearTimeout(retryTimerRef.current);
           retryTimerRef.current = null;
         }
-      };
-
-      ws.onmessage = (event) => {
+      },
+      onMessage: (event) => {
         try {
           const msg: WsMsg = JSON.parse(event.data);
 
@@ -134,23 +133,21 @@ export const useJsonPatchWsStream = <T extends object>(
           // Treat finished as terminal - do NOT reconnect
           if ('finished' in msg) {
             finishedRef.current = true;
-            ws.close(1000, 'finished');
-            wsRef.current = null;
+            disconnectRef.current?.();
+            disconnectRef.current = null;
             setIsConnected(false);
           }
         } catch (err) {
           console.error('Failed to process WebSocket message:', err);
           setError('Failed to process stream update');
         }
-      };
-
-      ws.onerror = () => {
+      },
+      onError: () => {
         setError('Connection failed');
-      };
-
-      ws.onclose = (evt) => {
+      },
+      onClose: (evt) => {
         setIsConnected(false);
-        wsRef.current = null;
+        disconnectRef.current = null;
 
         // Do not reconnect if we received a finished message or clean close
         if (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)) {
@@ -160,24 +157,13 @@ export const useJsonPatchWsStream = <T extends object>(
         // Otherwise, reconnect on unexpected/error closures
         retryAttemptsRef.current += 1;
         scheduleReconnect();
-      };
-
-      wsRef.current = ws;
-    }
+      },
+    });
 
     return () => {
-      if (wsRef.current) {
-        const ws = wsRef.current;
-
-        // Clear all event handlers first to prevent callbacks after cleanup
-        ws.onopen = null;
-        ws.onmessage = null;
-        ws.onerror = null;
-        ws.onclose = null;
-
-        // Close regardless of state
-        ws.close();
-        wsRef.current = null;
+      if (disconnectRef.current) {
+        disconnectRef.current();
+        disconnectRef.current = null;
       }
       if (retryTimerRef.current) {
         window.clearTimeout(retryTimerRef.current);

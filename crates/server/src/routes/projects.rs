@@ -73,7 +73,21 @@ async fn handle_projects_ws(socket: WebSocket, deployment: DeploymentImpl) -> an
     let (mut sender, mut receiver) = socket.split();
 
     // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+    // Add error handling to log any issues with receiving messages
+    tokio::spawn(async move {
+        while let Some(result) = receiver.next().await {
+            match result {
+                Ok(_) => {
+                    // Successfully received and ignored client message (e.g., ping/pong)
+                }
+                Err(e) => {
+                    // Log errors from the receiver stream
+                    tracing::warn!("WebSocket receiver error: {}", e);
+                    break;
+                }
+            }
+        }
+    });
 
     // Forward server messages
     while let Some(item) = stream.next().await {
