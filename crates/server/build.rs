@@ -27,3 +27,4 @@ fn main() {
         fs::write(dist_path.join("index.html"), dummy_html).unwrap();
     }
 }
+// Forced rebuild
