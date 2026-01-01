@@ -228,6 +228,24 @@
           "model": "glm-4.6"
         }
       }
+    },
+    "I_FLOW": {
+      "DEFAULT": {
+        "I_FLOW": {
+          "yolo": true
+        }
+      },
+      "APPROVALS": {
+        "I_FLOW": {
+          "yolo": false
+        }
+      },
+      "MODEL_VARIANT": {
+        "I_FLOW": {
+          "model": "iflow-model-name",
+          "yolo": true
+        }
+      }
     }
   }
 }
